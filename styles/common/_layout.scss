@@ -3,23 +3,23 @@ main {
   @extend %site-width-container;
 }
 
-#content {
-  section {
-    clear: left;
-    float: left;
-    width: 100%;
-    position: relative;
-    margin-top: 0.5em;
-    margin-bottom: 1em;
-    padding-top: 1em;
+// #content {
+//   section {
+//     clear: left;
+//     float: left;
+//     width: 100%;
+//     position: relative;
+//     margin-top: 0.5em;
+//     margin-bottom: 1em;
+//     padding-top: 1em;
 
-    border-top: 1px solid $grey-2;
+//     border-top: 1px solid $grey-2;
 
-    .visualisation {
-      width: 100%;
-    }
-  }
-}
+//     .visualisation {
+//       width: 100%;
+//     }
+//   }
+// }
 
 .performance-hidden {
   display:none;

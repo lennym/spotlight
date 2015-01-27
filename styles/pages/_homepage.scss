@@ -1,0 +1,12 @@
+
+#homepage {
+  header {
+    @extend %outdent-to-full-width;
+    background-color: $performance-brand;
+    color: $white;
+
+    section {
+      @include grid-column( 2/3 );
+    }
+  }
+}
