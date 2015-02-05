@@ -15,12 +15,19 @@ function (View, Formatters) {
       View.prototype.initialize.apply(this, arguments);
 
       this.listenTo(collection, 'reset add remove', this.render);
+
+      if (this.model) {
+        this.listenTo(this.model, 'change:sort-by change:sort-order', _.bind(function() {
+          this.sort();
+        }, this));
+      }
     },
 
     prepareTable: function () {
       var cls,
         caption;
 
+      this.$el.empty();
       cls = (this.options.collapseOnNarrowViewport === true) ? ' class="table-collapsible"' : '';
       caption = (this.options.caption) ? '<caption class="visuallyhidden">' + this.options.caption + '</caption>' : '';
       this.$table = $('<table' + cls + '>' + caption + '</table>');
@@ -29,11 +36,6 @@ function (View, Formatters) {
 
     render: function () {
       this.prepareTable();
-
-      if (this.model && this.model.get('sort-by')) {
-        this.collection.sortByAttr(this.model.get('sort-by'), this.model.get('sort-order') === 'descending');
-      }
-
       $(this.renderHead()).appendTo(this.$table);
       $(this.renderBody()).appendTo(this.$table);
 
@@ -61,7 +63,7 @@ function (View, Formatters) {
           sortUrlParam = 'ascending';
         }
         cls = (sortBy === column.key) ? sortOrder + ' sort-column' : '';
-        return '<th scope="col" data-key="' + key + '" class="' + cls + '" role="columnheader"><a class="js-sort" href="?sortby=' + column.key + '&sortorder=' + sortUrlParam + '#filtered-list" role="button">' + label + ' <span class="visuallyhidden">Click to sort</span></a></th>';
+        return '<th scope="col" data-key="' + key + '" class="' + cls + '" aria-sort="' + cls + '" role="columnheader"><a class="js-sort" href="?sortby=' + column.key + '&sortorder=' + sortUrlParam + '#filtered-list" role="button">' + label + ' <span class="visuallyhidden">Click to sort</span></a></th>';
       }, this).join('\n');
 
       return '<thead><tr>' + head + '</tr></thead>';
@@ -70,13 +72,17 @@ function (View, Formatters) {
     renderRow: function (columns, cellContent, index) {
       var column = columns[index],
           className = '',
+          sortColClass = '',
           attrs = '',
           tag = 'td';
+
+      if (this.model && this.model.get('sort-by') === column.key) {
+        sortColClass = ' sort-column';
+      }
 
       if (column.format) {
         cellContent = this.format(cellContent, column.format);
         className = _.isString(column.format) ? column.format : column.format.type;
-        className = ' class="' + className + '"';
       }
 
       cellContent = (cellContent === null || cellContent === undefined) ?
@@ -90,7 +96,8 @@ function (View, Formatters) {
         attrs = ' data-title="' + column.label + ': "';
       }
 
-      return '<' + tag + className + attrs + ' data-key="' + column.key + '">' + cellContent + '</' + tag + '>';
+      className = ' class="' + className + sortColClass + '"';
+      return '<' + tag + attrs + className + ' data-key="' + column.key + '">' + cellContent + '</' + tag + '>';
     },
 
     renderBody: function (collection) {
@@ -147,7 +154,7 @@ function (View, Formatters) {
         return;
       }
 
-      this.tableCollection.comparator = _.bind(function (a, b) {
+      this.collection.comparator = _.bind(function (a, b) {
         var firstVal = a.get(sortBy),
           firstTime = a.get('_timestamp') || a.get('_start_at'),
           secondVal = b.get(sortBy),
@@ -192,46 +199,7 @@ function (View, Formatters) {
         return ret;
       }, this);
 
-      this.tableCollection.sort();
-    },
-
-    syncToTableCollection: function () {
-      this.tableCollection.reset(this.collection.toJSON());
-    },
-
-    renderSort: function () {
-      if (this.$table.find('tbody')) {
-        this.$table.find('tbody').remove();
-      }
-      $(this.renderBody(this.tableCollection)).appendTo(this.$table);
-
-      var sortBy = this.model.get('sort-by'),
-        sortOrder = this.model.get('sort-order'),
-        $sortedCells;
-
-      if (sortBy) {
-        var ths = this.$('thead th'),
-          $allCells = this.$('th,td'),
-          th = this.$('thead th[data-key="' + sortBy + '"]');
-
-        ths.removeClass('asc');
-        ths.removeClass('desc');
-        ths.removeAttr('aria-sort');
-
-        if (sortOrder === 'descending') {
-          th.addClass('desc');
-          th.attr('aria-sort', 'descending');
-        } else {
-          th.addClass('asc');
-          th.attr('aria-sort', 'ascending');
-        }
-
-        $allCells.removeClass('sort-column');
-        $sortedCells = this.$('[data-key="' + this.model.get('sort-by') + '"]');
-        $sortedCells.addClass('sort-column');
-      }
-
-      this.render();
+      this.collection.sort();
     },
 
     stripLink: function (str) {
