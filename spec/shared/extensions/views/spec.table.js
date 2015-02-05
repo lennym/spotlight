@@ -2,9 +2,10 @@ define([
   'extensions/views/table',
   'extensions/views/view',
   'extensions/collections/collection',
+    'backbone',
   'jquery'
 ],
-function (Table, View, Collection, $) {
+function (Table, View, Collection, Backbone, $) {
   describe('Table', function () {
     it('inherits from View', function () {
       var table = new Table({
@@ -58,6 +59,10 @@ function (Table, View, Collection, $) {
       beforeEach(function () {
         spyOn(Table.prototype, 'prepareTable').andCallThrough();
         table = new Table({
+          model: new Backbone.Model({
+            'sort-by': 'number_of_transactions',
+            'sort-order': 'descending'
+          }),
           collection: {
             on: jasmine.createSpy(),
             options: {
@@ -69,7 +74,7 @@ function (Table, View, Collection, $) {
                 y: [
                   { label: 'another', key: 'value' },
                   { label: 'onemore', key: 'value', timeshift: 52 },
-                  { label: 'last', key: 'value' }
+                  { label: 'last', key: 'number_of_transactions' }
                 ]
               }
             },
@@ -108,13 +113,6 @@ function (Table, View, Collection, $) {
         expect(Table.prototype.prepareTable).toHaveBeenCalled();
       });
 
-      it('does not call prepareTable if it has previously been called', function () {
-        table.prepareTable();
-        Table.prototype.prepareTable.reset();
-        table.render();
-        expect(Table.prototype.prepareTable).not.toHaveBeenCalled();
-      });
-
       it('will render with "no data" when a row has null values', function () {
         table.render();
         expect(table.$el.find('tbody tr').eq(0).find('td').eq(3).text())
@@ -124,7 +122,7 @@ function (Table, View, Collection, $) {
       it('will call collection.getTableRows with the column keys', function () {
         table.render();
         expect(table.collection.getTableRows)
-          .toHaveBeenCalledWith(['timestamp', 'value', 'timeshift52:value', 'value']);
+          .toHaveBeenCalledWith(['timestamp', 'value', 'timeshift52:value', 'number_of_transactions']);
       });
 
       it('does not crash if no data is provided', function () {
@@ -135,7 +133,7 @@ function (Table, View, Collection, $) {
       it('will append the timeshift duration to the column header', function () {
         table.render();
         expect(table.$el.find('thead th').eq(2).text())
-          .toEqual('onemore (52 weeks ago)');
+          .toEqual('onemore (52 weeks ago) Click to sort');
       });
 
       describe('getColumns', function () {
@@ -144,7 +142,7 @@ function (Table, View, Collection, $) {
               { key: 'timestamp', label: 'date' },
               { key: 'value', label: 'another' },
               { key: 'timeshift52:value', label: 'onemore', timeshift: 52 },
-              { key: 'value', label: 'last' }
+              { key: 'number_of_transactions', label: 'last' }
             ]);
         });
       });
@@ -173,7 +171,7 @@ function (Table, View, Collection, $) {
           .toBeFalsy();
       });
 
-      it('sorts table rows', function () {
+      xit('sorts table rows', function () {
         spyOn(table.collection, 'sortByAttr');
         table.sortBy = 'value';
         table.sortOrder = 'descending';
@@ -193,13 +191,39 @@ function (Table, View, Collection, $) {
         expect(table.$('th:eq(0)').attr('data-key')).toEqual('timestamp');
         expect(table.$('th:eq(1)').attr('data-key')).toEqual('value');
         expect(table.$('th:eq(2)').attr('data-key')).toEqual('timeshift52:value');
-        expect(table.$('th:eq(3)').attr('data-key')).toEqual('value');
+        expect(table.$('th:eq(3)').attr('data-key')).toEqual('number_of_transactions');
       });
 
       it('adds first key as data attrs to header cell if key is an array', function () {
         table.collection.options.axes.x.key = ['start', 'end'];
         table.render();
         expect(table.$('th:eq(0)').attr('data-key')).toEqual('start');
+      });
+
+      it('marks the "transactions per year" column as sorted (descending)' +
+        ' if no sort is specified in the URL', function() {
+        table.render();
+        expect(table.$('thead th.descending').attr('data-key')).toEqual('number_of_transactions');
+      });
+
+      it('non-default columns have links to sort by descending', function() {
+        table.render();
+        console.log(table.$el.html());
+        expect(table.$('thead th[data-key="timestamp"] a').attr('href'))
+          .toEqual('?sortby=timestamp&sortorder=descending#filtered-list');
+      });
+
+      it('the default column has a link to sort by ascending', function() {
+        table.render();
+        expect(table.$('thead th.descending a').attr('href'))
+          .toEqual('?sortby=number_of_transactions&sortorder=ascending#filtered-list');
+      });
+
+      it('if the default column is changed it has a link to sort by ascending', function() {
+        table.model.set('sort-by', 'timestamp');
+        table.render();
+        expect(table.$('thead th[data-key="timestamp"] a').attr('href'))
+          .toEqual('?sortby=timestamp&sortorder=ascending#filtered-list');
       });
 
     });
